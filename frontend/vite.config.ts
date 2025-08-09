@@ -84,12 +84,12 @@ export default defineConfig({
     port: 3000,
     proxy: {
       '/api': {
-        target: 'https://localhost:5001',
+        target: 'http://localhost:5000',
         changeOrigin: true,
         secure: false
       },
-      '/hubs': {
-        target: 'https://localhost:5001',
+      '/socket.io': {
+        target: 'http://localhost:5000',
         changeOrigin: true,
         secure: false,
         ws: true

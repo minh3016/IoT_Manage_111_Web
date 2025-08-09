@@ -182,8 +182,8 @@ export const validateConfig = () => {
   }
 
   // Validate database URL format
-  if (!config.database.url.startsWith('postgresql://')) {
-    errors.push('Database URL must be a valid PostgreSQL connection string');
+  if (!config.database.url.startsWith('postgresql://') && !config.database.url.startsWith('file:')) {
+    errors.push('Database URL must be a valid PostgreSQL or SQLite connection string');
   }
 
   if (errors.length > 0) {

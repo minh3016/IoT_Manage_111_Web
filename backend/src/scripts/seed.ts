@@ -10,7 +10,7 @@ async function main() {
 
   try {
     // Create admin user
-    const adminPassword = await bcrypt.hash('admin', config.security.bcryptRounds);
+    const adminPassword = await bcrypt.hash('admin123', config.security.bcryptRounds);
     const admin = await prisma.user.upsert({
       where: { username: 'admin' },
       update: {},
@@ -163,7 +163,6 @@ async function main() {
 
       await prisma.sensorData.createMany({
         data: sensorDataEntries,
-        skipDuplicates: true,
       });
 
       // Create sample device parameters
