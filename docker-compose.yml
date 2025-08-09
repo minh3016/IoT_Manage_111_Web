@@ -1,0 +1,91 @@
+version: '3.8'
+
+services:
+  # MySQL Database
+  mysql:
+    image: mysql:8.0
+    container_name: cooling-manager-db
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: cooling_manager
+      MYSQL_USER: cooling_user
+      MYSQL_PASSWORD: cooling_password
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - cooling-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
+  # Redis Cache (optional)
+  redis:
+    image: redis:7-alpine
+    container_name: cooling-manager-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - cooling-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+
+  # Backend API
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: cooling-manager-api
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:80
+      - ConnectionStrings__DefaultConnection=Server=mysql;Database=cooling_manager;User=cooling_user;Password=cooling_password;
+      - ConnectionStrings__Redis=redis:6379
+      - Jwt__Secret=your-super-secret-jwt-key-here-make-it-long-and-secure
+      - Jwt__Issuer=CoolingManagerAPI
+      - Jwt__Audience=CoolingManagerWeb
+      - Cors__AllowedOrigins__0=http://localhost:3000
+      - Cors__AllowedOrigins__1=http://localhost:80
+    ports:
+      - "5000:80"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - cooling-network
+    volumes:
+      - ./backend/logs:/app/logs
+
+  # Frontend Web App
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: cooling-manager-web
+    environment:
+      - VITE_API_BASE_URL=http://localhost:5000/api
+      - VITE_SIGNALR_URL=http://localhost:5000/hubs/devices
+    ports:
+      - "80:80"
+    depends_on:
+      - api
+    networks:
+      - cooling-network
+
+volumes:
+  mysql_data:
+  redis_data:
+
+networks:
+  cooling-network:
+    driver: bridge

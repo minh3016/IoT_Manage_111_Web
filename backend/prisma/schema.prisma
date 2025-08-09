@@ -1,0 +1,192 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  username  String   @unique
+  email     String   @unique
+  password  String
+  role      UserRole @default(USER)
+  firstName String?
+  lastName  String?
+  phone     String?
+  isActive  Boolean  @default(true)
+  lastLogin DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  activities Activity[]
+  auditLogs  AuditLog[]
+
+  @@map("users")
+}
+
+model Device {
+  id                   Int      @id @default(autoincrement())
+  deviceId             String   @unique
+  deviceName           String
+  deviceType           String
+  status               DeviceStatus @default(INACTIVE)
+  ownerName            String
+  phoneNumber          String?
+  installationDate     DateTime
+  installationAddress  String?
+  warrantyMonths       Int      @default(12)
+  locationLat          Float?
+  locationLng          Float?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  // Relations
+  sensorData   SensorData[]
+  activities   Activity[]
+  parameters   DeviceParameter[]
+  alerts       Alert[]
+
+  @@map("devices")
+}
+
+model SensorData {
+  id                  Int      @id @default(autoincrement())
+  deviceId            Int
+  tempColdStorage     Float?
+  tempEnvironment     Float?
+  tempSolution        Float?
+  pressureSuction     Float?
+  pressureDischarge   Float?
+  superheatCurrent    Float?
+  voltageA            Float?
+  currentA            Float?
+  timestamp           DateTime @default(now())
+
+  // Relations
+  device Device @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+
+  @@map("sensor_data")
+}
+
+model DeviceParameter {
+  id          Int      @id @default(autoincrement())
+  deviceId    Int
+  name        String
+  value       String
+  unit        String?
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  device Device @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+
+  @@map("device_parameters")
+}
+
+model Activity {
+  id        Int            @id @default(autoincrement())
+  userId    Int?
+  deviceId  Int?
+  action    String
+  type      ActivityType   @default(SYSTEM)
+  severity  ActivitySeverity @default(INFO)
+  details   String?
+  timestamp DateTime       @default(now())
+
+  // Relations
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+  device Device? @relation(fields: [deviceId], references: [id], onDelete: SetNull)
+
+  @@map("activities")
+}
+
+model Alert {
+  id        Int           @id @default(autoincrement())
+  deviceId  Int
+  severity  AlertSeverity @default(INFO)
+  message   String
+  status    AlertStatus   @default(ACTIVE)
+  createdAt DateTime      @default(now())
+  resolvedAt DateTime?
+
+  // Relations
+  device Device @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+
+  @@map("alerts")
+}
+
+model AuditLog {
+  id        Int      @id @default(autoincrement())
+  userId    Int?
+  action    String
+  details   String?
+  ipAddress String?
+  userAgent String?
+  timestamp DateTime @default(now())
+
+  // Relations
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@map("audit_logs")
+}
+
+model SystemSetting {
+  id        Int      @id @default(autoincrement())
+  key       String   @unique
+  value     String
+  category  String?
+  description String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("system_settings")
+}
+
+// Enums
+enum UserRole {
+  ADMIN
+  TECHNICIAN
+  USER
+}
+
+enum DeviceStatus {
+  ACTIVE
+  INACTIVE
+  MAINTENANCE
+  ERROR
+}
+
+enum ActivityType {
+  USER
+  SYSTEM
+  ALERT
+  ERROR
+}
+
+enum ActivitySeverity {
+  SUCCESS
+  INFO
+  WARNING
+  ERROR
+}
+
+enum AlertSeverity {
+  INFO
+  WARNING
+  ERROR
+  CRITICAL
+}
+
+enum AlertStatus {
+  ACTIVE
+  ACKNOWLEDGED
+  RESOLVED
+}
